@@ -329,5 +329,10 @@ service qcom-sh /vendor/bin/init.qcom.sh
     user root
     oneshot
 
+service time_daemon /vendor/bin/time_daemon
+    class main
+    user root
+    group root
+
 on property:dev.bootcomplete=1
     setprop sys.io.scheduler "bfq"
