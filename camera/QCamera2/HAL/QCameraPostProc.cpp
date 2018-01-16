@@ -738,6 +738,53 @@ bool QCameraPostProcessor::validatePostProcess(mm_camera_super_buf_t *frame)
     return status;
 }
 
+int32_t QCameraPostProcessor::doNoiseReduction(mm_camera_super_buf_t *frame)
+{
+    if (frame == NULL) {
+        return NO_INIT;
+    }
+
+    QCameraChannel *pChannel = m_parent->getChannelByHandle(frame->ch_id);
+    QCameraReprocessChannel *m_pReprocChannel = NULL;
+
+    for (int8_t i = 0; i < mTotalNumReproc; i++) {
+        if (pChannel == mPPChannels[i]->getSrcChannel()) {
+            m_pReprocChannel = mPPChannels[i];
+            break;
+        }
+    }
+
+    if (m_pReprocChannel != NULL && pChannel == m_pReprocChannel->getSrcChannel()) {
+        char *morphoDevice;
+        int x, y;
+        size_t buf_size;
+        void *buffer;
+
+        m_parent->mParameters.getPictureSize(&x, &y);
+        buf_size = morpho_ImageStabilizer4_getBufferSize(x, y, m_pReprocChannel->getNumOfStreams(), "YVU420_SEMIPLANAR");
+        buffer = malloc(buf_size);
+
+        morpho_ImageStabilizer4_initialize(morphoDevice, buffer, buf_size, x, y);
+        morpho_ImageStabilizer4_setCoreSetting(morphoDevice, 6, 63);
+        morpho_ImageStabilizer4_setImageFormat(morphoDevice, "YVU420_SEMIPLANAR");
+        morpho_ImageStabilizer4_setNumberOfMergeImages(morphoDevice, m_parent->getOutputImageCount());
+        morpho_ImageStabilizer4_setInputISO(morphoDevice, m_parent->mParameters.getExifIsoSpeed());
+        morpho_ImageStabilizer4_setLumaNoiseReductionLevel(morphoDevice, 7);
+        morpho_ImageStabilizer4_setChromaNoiseReductionLevel(morphoDevice, 7);
+        morpho_ImageStabilizer4_setSharpnessEnhanceLevel(morphoDevice, 10000);
+        morpho_ImageStabilizer4_startEx(morphoDevice, /*unknown*/ 0, m_pReprocChannel->getNumOfStreams());
+        for (int8_t i = 0; i < m_pReprocChannel->getNumOfStreams(); i++) {
+            morpho_ImageStabilizer4_addImageEx(morphoDevice, m_pReprocChannel->getStreamByIndex(i));
+        }
+        morpho_ImageStabilizer4_getResult(morphoDevice);
+        morpho_ImageStabilizer4_finalize(morphoDevice);
+
+        free(buffer);
+    }
+
+    return 0;
+}
+
 /*===========================================================================
  * FUNCTION   : processData
  *
@@ -784,6 +831,8 @@ int32_t QCameraPostProcessor::processData(mm_camera_super_buf_t *frame)
             //play shutter sound
             m_parent->playShutter();
         }
+
+        doNoiseReduction(frame);
 
         ATRACE_INT("Camera:Reprocess", 1);
         CDBG_HIGH("%s: need reprocess", __func__);
