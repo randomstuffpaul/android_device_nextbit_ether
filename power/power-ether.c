@@ -49,6 +49,8 @@
 #include "performance.h"
 #include "power-common.h"
 
+#define VIDEO_MODE_SYSFS "/sys/class/graphics/fb0/video_mode"
+
 static int current_power_profile = PROFILE_BALANCED;
 
 static int profile_high_performance[] = {
@@ -131,6 +133,23 @@ static void set_power_profile(int profile)
     current_power_profile = profile;
 }
 
+static void set_video_mode(char *metadata)
+{
+    if (!metadata) {
+        return;
+    }
+
+    if (!strncmp(metadata, "state=1", sizeof("state=1"))) {
+        if (sysfs_write(VIDEO_MODE_SYSFS, "1") == -1) {
+            ALOGE("Couldn't enable video mode");
+        }
+    } else if (!strncmp(metadata, "state=0", sizeof("state=0"))) {
+        if (sysfs_write(VIDEO_MODE_SYSFS, "0") == -1) {
+            ALOGE("Couldn't disable video mode");
+        }
+    }
+}
+
 static void process_video_encode_hint(void *metadata)
 {
     char governor[80];
@@ -204,6 +223,9 @@ int power_hint_override(power_hint_t hint, void *data)
     if (hint == POWER_HINT_SET_PROFILE) {
         set_power_profile(*(int32_t *)data);
         return HINT_HANDLED;
+    } else if (hint == POWER_HINT_VIDEO_DECODE) {
+        set_video_mode((char *)data);
+        return HINT_HANDLED;
     }
 
     // Skip other hints in high/low power modes
@@ -244,8 +266,6 @@ int power_hint_override(power_hint_t hint, void *data)
             duration = 2000;
             interaction(duration, ARRAY_SIZE(resources_launch),
                     resources_launch);
-            return HINT_HANDLED;
-        case POWER_HINT_VIDEO_DECODE:
             return HINT_HANDLED;
         case POWER_HINT_VIDEO_ENCODE:
             process_video_encode_hint(data);
