@@ -131,46 +131,6 @@ static void set_power_profile(int profile)
     current_power_profile = profile;
 }
 
-static void process_video_decode_hint(void *metadata)
-{
-    char governor[80];
-    struct video_decode_metadata_t video_decode_metadata;
-
-    if (get_scaling_governor(governor, sizeof(governor)) == -1) {
-        ALOGE("Can't obtain scaling governor.");
-        return;
-    }
-
-    if (!metadata) {
-        return;
-    }
-
-    /* Initialize decode metadata struct fields. */
-    memset(&video_decode_metadata, 0, sizeof(struct video_decode_metadata_t));
-    video_decode_metadata.state = -1;
-    video_decode_metadata.hint_id = DEFAULT_VIDEO_DECODE_HINT_ID;
-
-    if (parse_video_decode_metadata((char *)metadata,
-            &video_decode_metadata) == -1) {
-        ALOGE("Error occurred while parsing metadata.");
-        return;
-    }
-
-    if (video_decode_metadata.state == 1) {
-        if (is_interactive_governor(governor)) {
-            int resource_values[] = {
-                TR_MS_30, HISPEED_LOAD_90, HS_FREQ_1026, THREAD_MIGRATION_SYNC_OFF
-            };
-            perform_hint_action(video_decode_metadata.hint_id,
-                    resource_values, ARRAY_SIZE(resource_values));
-        }
-    } else if (video_decode_metadata.state == 0) {
-        if (is_interactive_governor(governor)) {
-            undo_hint_action(video_decode_metadata.hint_id);
-        }
-    }
-}
-
 static void process_video_encode_hint(void *metadata)
 {
     char governor[80];
@@ -286,7 +246,6 @@ int power_hint_override(power_hint_t hint, void *data)
                     resources_launch);
             return HINT_HANDLED;
         case POWER_HINT_VIDEO_DECODE:
-            process_video_decode_hint(data);
             return HINT_HANDLED;
         case POWER_HINT_VIDEO_ENCODE:
             process_video_encode_hint(data);
