@@ -146,6 +146,9 @@ on post-fs-data
     # Create PERFD deamon related dirs
     mkdir /data/system/perfd 2770 root system
 
+on property:apexd.status=ready
+    mount none /system/etc/swcodec/ld.config.txt /apex/com.android.media.swcodec/etc/ld.config.txt bind
+
 service perfd /system/vendor/bin/perfd
     class main
     user root
