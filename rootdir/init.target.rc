@@ -49,7 +49,7 @@ service qcamerasvr /vendor/bin/mm-qcamera-daemon
     writepid /dev/cpuset/camera-daemon/tasks
 
 service qseecomd /vendor/bin/qseecomd
-    class core
+    class early_hal
     user root
     group root
     writepid /dev/cpuset/foreground/tasks

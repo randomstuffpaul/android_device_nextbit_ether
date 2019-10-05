@@ -125,6 +125,10 @@ PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/gps/izat.conf:$(TARGET_COPY_OUT_SYSTEM)/etc/izat.conf \
     $(LOCAL_PATH)/gps/sap.conf:$(TARGET_COPY_OUT_SYSTEM)/etc/sap.conf
 
+# HW crypto
+PRODUCT_PACKAGES += \
+    vendor.qti.hardware.cryptfshw@1.0-service-ioctl-qti
+
 # Init
 PRODUCT_PACKAGES += \
     init.nbq.fingerprint.rc \
